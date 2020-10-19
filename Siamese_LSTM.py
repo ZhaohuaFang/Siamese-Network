@@ -10,16 +10,20 @@ import random as rnd
 nltk.download('punkt')
 # set random seeds
 rnd.seed(34)
-
 data = pd.read_csv('/content/drive/My Drive/Siamese Network/questions.csv')
-N=len(data)
+#发现dataframe的363416行有问题，删除之
+data=data.drop(index=[363416])
+print(len(data))
 
-N_train = 300000
-N_test  = 10*1024
-#data = pd.read_csv("questions.csv")
-data_train = data[:N_train]
-data_test  = data[N_train:N_train+N_test]
-print("Train set:", len(data_train), "Test set:", len(data_test))
+#此处question1为NAN
+data[363415:363417]
+
+data_train = data[:int(0.8 * len(data))]
+data_test = data[int(0.8 * len(data)):]
+# N_train = 300000
+# N_test  = 10*1024
+# data_train = data[:N_train]
+# data_test  = data[N_train:N_train+N_test]
 del(data) # remove to free memory
 
 #为何这样就保证同一组的句子不是duplicate
@@ -27,9 +31,6 @@ del(data) # remove to free memory
 td_index = (data_train['is_duplicate'] == 1).to_numpy()
 #[5, 7, 11, 12, 13, 15, 16, 18, 20, 29....]
 td_index = [i for i, x in enumerate(td_index) if x] 
-print('number of duplicate questions: ', len(td_index))
-print('indexes of first ten duplicate questions:', td_index[:10])
-
 #随便输出一行数据，它们不是duplicate
 print(data_train['question1'][4]) 
 print(data_train['question2'][4])
@@ -70,6 +71,7 @@ print('The length of the vocabulary is: ', len(vocab))
 
 for idx in range(len(Q1_test_words)): 
     Q1_test[idx] = nltk.word_tokenize(Q1_test_words[idx])
+    
     Q2_test[idx] = nltk.word_tokenize(Q2_test_words[idx])
 
 # Converting questions to array of integers
@@ -132,6 +134,8 @@ def TripletLossFn(v1, v2, margin=0.25):
 #         v1,v2 =>tensor
 #         v1  (batch_size, model_dimension) associated to Q1.
 #         v2  (batch_size, model_dimension) associated to Q2.
+    v1 = v1 / tf.sqrt(tf.reduce_sum(v1 * v1, axis=1, keepdims=True))
+    v2 = v2 / tf.sqrt(tf.reduce_sum(v2 * v2, axis=1, keepdims=True))
     scores = tf.matmul(v1,tf.transpose(v2))
     batch_size = scores.shape[0]
     positive = tf.linalg.tensor_diag_part(scores)  
@@ -150,7 +154,7 @@ def TripletLossFn(v1, v2, margin=0.25):
     return triplet_loss
 
 threshold=0.7
-for epoch in range(200):
+for epoch in range(1000):
      for step, (x, y) in enumerate(db_train):
         with tf.GradientTape() as tape:
             out1=net_embedding(x)
@@ -172,16 +176,23 @@ for epoch in range(200):
             out1=net_LSTM(out1)
             out2=net_embedding(y)
             out2=net_LSTM(out2)
-            y_testt = y_test[i:i+batchsz]
+            out1 = out1 / tf.sqrt(tf.reduce_sum(out1 * out1, axis=1, keepdims=True))
+            out2 = out2 / tf.sqrt(tf.reduce_sum(out2 * out2, axis=1, keepdims=True))
+            y_testt = y_test[i*batchsz:i*batchsz+batchsz]
             correct=0
             for j in range(batchsz):
                 d = tf.matmul(tf.reshape(out1[j],[1,-1]),tf.reshape(out2[j],[-1,1]))
                 d=tf.reduce_sum(d)
                 res = d > threshold
                 res=tf.cast(res,dtype=tf.int64)
+                
                 correct += tf.cast((y_testt[j] == res),dtype=tf.int64)
             
             total_num += x.shape[0]
             total_correct += int(correct)
      acc = total_correct / total_num
      print(epoch, 'acc:', acc)
+# net_embedding.save_weights('net_embedding')
+# net_LSTM.save_weights('net_LSTM')
+        
+        
