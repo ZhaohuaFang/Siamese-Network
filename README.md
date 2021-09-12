@@ -8,5 +8,5 @@ Given two sentences, we first get word embeddings of each word. Then we send two
 
 When defining the loss function, we use the idea of hard triplets to help the model learn more. We combine two kinds of loss functions that are mean negative and closest negative, which can be seen in the function TripletLossFn() shown in Siamese_LSTM.py.
 
-The dataset is downloaded from assignment of Coursera Natural Language Processing Specialization, Part 3, which is accessible via this link:
+The dataset is downloaded from assignment of Coursera Natural Language Processing Specialization, Part 3, which can be accessed via this link:
 https://drive.google.com/file/d/16fAkNRpTMD-a2NIaOs1si8SWuDNK3jTA/view?usp=sharing
